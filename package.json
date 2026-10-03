@@ -1,0 +1,25 @@
+{
+  "name": "homestay-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Assam homestay platform MVP: bookings, Annexure 10 register, police report, monthly return, GST bills",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  }
+}
