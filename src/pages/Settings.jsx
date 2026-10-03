@@ -7,6 +7,50 @@ import { Field, PageHead, ErrorBox, SigImage } from '../components/ui.jsx';
 import SignaturePad from '../components/SignaturePad.jsx';
 import { useStaffSignature } from './CheckIn.jsx';
 import { downloadFile } from './Register.jsx';
+import { getLockSettings, setPin, removePin, LOCK_MINUTES, SIGN_OUT_MINUTES } from '../lib/lock.js';
+
+function ScreenLock({ uid, live, toast }) {
+  const [current, setCurrent] = useState(() => getLockSettings(uid));
+  const [pin, setPinValue] = useState('');
+  const [again, setAgain] = useState('');
+  const [minutes, setMinutes] = useState(current?.minutes || 10);
+  const [error, setError] = useState(null);
+
+  async function save(e) {
+    e.preventDefault();
+    setError(null);
+    if (!/^\d{4,6}$/.test(pin)) { setError('Use 4 to 6 digits.'); return; }
+    if (pin !== again) { setError('The two PINs do not match.'); return; }
+    await setPin(uid, pin, Number(minutes));
+    setCurrent(getLockSettings(uid));
+    setPinValue(''); setAgain('');
+    toast(`Screen lock on: locks after ${minutes} minutes without use.`);
+  }
+
+  return (
+    <div className="card stack">
+      <h3>Screen lock (shared phones)</h3>
+      {current ? (
+        <div className="row-between">
+          <span>On. Locks after {current.minutes} minutes without use.</span>
+          <button className="btn small" onClick={() => { removePin(uid); setCurrent(null); toast('Screen lock turned off.'); }}>Turn off</button>
+        </div>
+      ) : (
+        <p className="hint">Off. {live ? `Without a PIN you are signed out after ${SIGN_OUT_MINUTES} minutes without use.` : 'Set a PIN so the register cannot be opened by someone else on this phone.'}</p>
+      )}
+      <form className="stack" onSubmit={save}>
+        <div className="grid3">
+          <Field label={current ? 'New PIN' : 'PIN'} id="lk-pin"><input id="lk-pin" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={e => setPinValue(e.target.value.replace(/\D/g, ''))} /></Field>
+          <Field label="PIN again" id="lk-again"><input id="lk-again" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={again} onChange={e => setAgain(e.target.value.replace(/\D/g, ''))} /></Field>
+          <Field label="Lock after" id="lk-min"><select id="lk-min" value={minutes} onChange={e => setMinutes(e.target.value)}>{LOCK_MINUTES.map(m => <option key={m} value={m}>{m} minutes</option>)}</select></Field>
+        </div>
+        <ErrorBox error={error} />
+        <button className="btn">{current ? 'Change PIN' : 'Turn on screen lock'}</button>
+      </form>
+      <p className="hint">The PIN stays on this phone. Five wrong tries sign the account out.</p>
+    </div>
+  );
+}
 
 // Changes the Directorate must be told about within 30 days (Act s.7, Rule 5, Form 7).
 const FORM7_FIELDS = ['name', 'category', 'address'];
@@ -139,6 +183,8 @@ export default function Settings() {
       </div>
 
       <ErrorBox error={error} />
+
+      <ScreenLock uid={user.id} live={backend.mode === 'supabase'} toast={toast} />
 
       <div className="card stack">
         <h3>Data</h3>

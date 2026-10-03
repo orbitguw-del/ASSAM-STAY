@@ -8,7 +8,7 @@ export default function Onboarding() {
   const { backend, boot } = useApp();
   const [p, setP] = useState({
     name: '', category: 'homestay', district: '', address: '', police_station: '', police_contact: '',
-    gstin: '', tourism_reg_no: '', tourism_reg_valid_to: '', invoice_prefix: '',
+    gstin: '', tourism_reg_no: '', tourism_reg_valid_to: '', invoice_prefix: '', invite_code: '',
   });
   const [rooms, setRooms] = useState([{ name: 'Room 1', tariff: 2000 }, { name: 'Room 2', tariff: 2000 }]);
   const [error, setError] = useState(null);
@@ -20,6 +20,7 @@ export default function Onboarding() {
   async function submit(e) {
     e.preventDefault();
     setError(null);
+    if (!p.invite_code.trim()) { setError('Enter your pilot invite code. Ask Storey Labs if you do not have one.'); return; }
     if (!p.name.trim()) { setError('Enter the homestay name.'); return; }
     if (!/^[A-Z0-9]{2,3}$/.test(p.invoice_prefix)) { setError('The bill prefix is 2 or 3 capital letters or digits, e.g. BGH. Bill numbers then fit the 16-character GST limit.'); return; }
     if (rooms.length < min) { setError(`Add at least ${min} rooms.`); return; }
@@ -36,6 +37,9 @@ export default function Onboarding() {
       <form className="auth-body stack" onSubmit={submit}>
         <h1>Set up your homestay</h1>
         <p className="hint">Takes about five minutes. You can change everything later except the bill prefix.</p>
+        <Field label="Pilot invite code" id="ob-invite" hint="From Storey Labs, e.g. KAZIRANGA-01">
+          <input id="ob-invite" value={p.invite_code} autoComplete="off" onChange={e => set('invite_code', e.target.value.toUpperCase())} />
+        </Field>
         <Field label="Homestay name" id="ob-name"><input id="ob-name" value={p.name} onChange={e => set('name', e.target.value)} /></Field>
         <div className="grid2">
           <Field label="Category" id="ob-cat"><select id="ob-cat" value={p.category} onChange={e => set('category', e.target.value)}><option value="homestay">Homestay (2 to 8 rooms)</option><option value="bnb">Bed and breakfast</option></select></Field>

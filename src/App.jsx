@@ -17,6 +17,8 @@ import InvoiceView from './pages/InvoiceView.jsx';
 import Settings from './pages/Settings.jsx';
 import Login from './pages/Login.jsx';
 import Onboarding from './pages/Onboarding.jsx';
+import IdleLock from './components/IdleLock.jsx';
+import { isPublicDemo } from './lib/backend/index.js';
 
 const ICONS = {
   today: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
@@ -31,6 +33,9 @@ export default function App() {
   const { status, error, property, data, backend, boot } = useApp();
 
   if (status === 'loading') return <div className="center hint">Opening your homestay…</div>;
+  if (status === 'misconfigured') return (
+    <div className="center"><div className="box crit">This app is not connected to its database yet, so it will not store guest details. The owner needs to add the Supabase keys (see README).</div></div>
+  );
   if (status === 'error') return (
     <div className="center"><div className="box crit">Could not load: {error}</div><button className="btn" onClick={boot}>Try again</button></div>
   );
@@ -41,8 +46,12 @@ export default function App() {
   const crit = buildAlerts({ today, property, data }).filter(a => a.sev === 'crit').length;
 
   return (
+    <IdleLock>
     <div className="shell">
       <div className="gamosa" aria-hidden="true" />
+      {isPublicDemo(backend) && (
+        <div className="demo-banner no-print" role="note">Demo with sample data. Do not enter real guest details: anything typed here stays only in this browser.</div>
+      )}
       <header className="top no-print">
         <div className="top-main">
           <div className="name">{property.name}{backend.mode === 'demo' && <span className="demo-pill">DEMO</span>}</div>
@@ -77,5 +86,6 @@ export default function App() {
         ))}
       </nav>
     </div>
+    </IdleLock>
   );
 }

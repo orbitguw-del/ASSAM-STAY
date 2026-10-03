@@ -1,13 +1,15 @@
 // Runs the real migration in an in-memory Postgres (PGlite) with a stub of Supabase's auth schema,
 // then checks the protections the law and the product depend on.
 import { describe, it, expect, beforeAll } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
 
-const MIGRATION = readFileSync(new URL('../migrations/20261003000000_init.sql', import.meta.url), 'utf8');
+const DIR = new URL('../migrations/', import.meta.url);
+const MIGRATIONS = readdirSync(DIR).filter(f => f.endsWith('.sql')).sort().map(f => readFileSync(new URL(f, DIR), 'utf8'));
 const USER_A = '00000000-0000-0000-0000-00000000000a';
 const USER_B = '00000000-0000-0000-0000-00000000000b';
+const USER_C = '00000000-0000-0000-0000-00000000000c';
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
 
 let db;
@@ -22,8 +24,8 @@ async function as(user, sql, params = []) {
   }
 }
 
-async function setupProperty(user, name, prefix, rooms = 3) {
-  const p = { name, category: 'homestay', invoice_prefix: prefix, gstin: '18AAAAA0000A1Z5',
+async function setupProperty(user, name, prefix, rooms = 3, invite = 'PILOT-TEST') {
+  const p = { name, category: 'homestay', invoice_prefix: prefix, gstin: '18AAAAA0000A1Z5', invite_code: invite,
     rooms: Array.from({ length: rooms }, (_, i) => ({ name: `Room ${i + 1}`, tariff: 2200 })) };
   const [{ id }] = await as(user, 'select public.setup_property($1::jsonb) as id', [JSON.stringify(p)]);
   const [prop] = await as(user, 'select * from public.properties where id = $1', [id]);
@@ -57,9 +59,11 @@ beforeAll(async () => {
       $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth, public to authenticated, anon;
     grant execute on function auth.uid() to authenticated, anon;
-    insert into auth.users values ('${USER_A}'), ('${USER_B}');
+    insert into auth.users values ('${USER_A}'), ('${USER_B}'), ('${USER_C}');
   `);
-  await db.exec(MIGRATION);
+  for (const sql of MIGRATIONS) await db.exec(sql);
+  await db.exec(`insert into public.invite_codes (code, max_uses) values ('PILOT-TEST', 10), ('ONE-USE-1', 1), ('OLD-CODE-1', 5);
+                 update public.invite_codes set expires_on = '2020-01-01' where code = 'OLD-CODE-1';`);
 }, 60000);
 
 describe('database protections', () => {
@@ -108,7 +112,25 @@ describe('database protections', () => {
   });
 
   it('needs at least 2 rooms at setup', async () => {
-    await expect(setupProperty(USER_B, 'Tiny', 'TNY', 1)).rejects.toThrow(/at least 2 rooms/);
+    await expect(setupProperty(USER_C, 'Tiny', 'TNY', 1)).rejects.toThrow(/at least 2 rooms/);
+  });
+
+  describe('pilot sign-up control', () => {
+    it('refuses setup without a valid invite code', async () => {
+      await expect(setupProperty(USER_C, 'Nope', 'NOP', 3, 'MADE-UP-9')).rejects.toThrow(/invite code is not valid/);
+      await expect(setupProperty(USER_C, 'Nope', 'NOP', 3, 'OLD-CODE-1')).rejects.toThrow(/invite code is not valid/);
+    });
+
+    it('lets each code be used only as often as allowed, and one homestay per account', async () => {
+      await setupProperty(USER_C, 'Hill View', 'HVH', 2, 'one-use-1');
+      await expect(setupProperty(USER_C, 'Second', 'SEC', 2)).rejects.toThrow(/already has a homestay/);
+      const [{ used }] = (await db.query(`select used from public.invite_codes where code = 'ONE-USE-1'`)).rows;
+      expect(used).toBe(1);
+    });
+
+    it('keeps invite codes unreadable through the API', async () => {
+      await expect(as(USER_A, 'select * from public.invite_codes')).rejects.toThrow(/permission denied/);
+    });
   });
 
   it('numbers invoices in sequence per financial year, at most 16 characters', async () => {

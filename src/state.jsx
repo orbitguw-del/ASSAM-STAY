@@ -23,6 +23,7 @@ export function AppProvider({ children }) {
   }, []);
 
   const boot = useCallback(async () => {
+    if (!backend) { setStatus('misconfigured'); return; }
     try {
       const s = await backend.init();
       if (!s.user) { setStatus('signedOut'); return; }
@@ -43,7 +44,7 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     boot();
-    return backend.onAuthChange?.(() => boot());
+    return backend?.onAuthChange?.(() => boot());
   }, [backend, boot]);
 
   const refresh = useCallback(async (nextProperty) => {
