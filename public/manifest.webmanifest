@@ -1,7 +1,7 @@
 {
-  "name": "Homestay Desk",
-  "short_name": "Homestay",
-  "description": "Bookings, tourist register, police report and GST bills for Assam homestays",
+  "name": "NE Stays",
+  "short_name": "NE Stays",
+  "description": "Bookings, tourist register, police report and GST bills for homestays in the Northeast",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

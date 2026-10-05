@@ -230,9 +230,9 @@ secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1m0s"
 # Number of characters used in the email OTP.
-otp_length = 8
+otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+otp_expiry = 900
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]
@@ -243,6 +243,16 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Sign-in emails carry a 6-digit code, which works the same in the Android app, the website and on
+# another device (a link would open the browser instead of the app).
+[auth.email.template.magic_link]
+subject = "Your NE Stays sign-in code"
+content_path = "./supabase/templates/sign_in_code.html"
+
+[auth.email.template.confirmation]
+subject = "Your NE Stays sign-in code"
+content_path = "./supabase/templates/sign_in_code.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

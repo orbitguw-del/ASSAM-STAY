@@ -21,7 +21,10 @@ export function createSupabaseBackend(url, anonKey) {
       return () => data.subscription.unsubscribe();
     },
     async signIn(email) {
-      unwrap(await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } }));
+      unwrap(await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } }));
+    },
+    async verifyCode(email, token) {
+      unwrap(await sb.auth.verifyOtp({ email, token, type: 'email' }));
     },
     async signOut() { await sb.auth.signOut(); },
     async listProperties() { return unwrap(await sb.from('properties').select('*').order('created_at')); },
